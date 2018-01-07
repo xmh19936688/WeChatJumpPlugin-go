@@ -47,14 +47,14 @@ func handleJump(w http.ResponseWriter, r *http.Request){
 	
 	// 初始化 step map array
 	if distanceStep == 0 {
-		distanceStep = x/10;
+		distanceStep = x/100;
 		ddMap = make(map[int64]int64)	
 		ddMap[distanceStep] = minDelay
 		ddMap[x*2] = maxDelay
 		distanceArray = append(distanceArray, distanceStep)
 		distanceArray = append(distanceArray, x*2)
-		fmt.Println("distance:", distanceStep, "delay:", minDelay)
-		fmt.Println("distance:", x*2, "delay:", maxDelay)
+		fmt.Println("distance:", distanceStep, "delay:", minDelay, "length:", len(distanceArray))
+		fmt.Println("distance:", x*2, "delay:", maxDelay, "length:", len(distanceArray))
 	}
 	
 	// 取为step的整数倍
@@ -65,7 +65,7 @@ func handleJump(w http.ResponseWriter, r *http.Request){
 	click(x, y, delay)
 	w.WriteHeader(http.StatusOK)
 
-	fmt.Println("distance:", lastDistance, "delay:", delay)
+	fmt.Println("distance:", lastDistance, "delay:", delay, "length:", len(distanceArray))
 }
 
 func handleAdjust(w http.ResponseWriter, r *http.Request){
@@ -89,7 +89,7 @@ func handleAdjust(w http.ResponseWriter, r *http.Request){
 
 	w.WriteHeader(http.StatusOK)
 
-	fmt.Println("distance:", lastDistance, "delay:", ddMap[lastDistance])
+	fmt.Println("distance:", lastDistance, "delay:", ddMap[lastDistance], "length:", len(distanceArray))
 }
 
 func click(x, y, delay int64){

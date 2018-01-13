@@ -10,6 +10,8 @@ import(
 	"time"
 	"os/signal"
 	"strconv"
+	"io/ioutil"
+	"encoding/json"
 )
 
 var ddMap map[int64]int64
@@ -18,6 +20,8 @@ var minDelay int64 = 100
 var maxDelay int64 = 1000
 var distanceStep int64 = 0
 var lastDistance int64 = 0
+var mapFileName = "mapData"
+var arrayFileName = "arrayData"
 
 func handleJump(w http.ResponseWriter, r *http.Request){
 	if r.Method != "GET" {
@@ -45,16 +49,20 @@ func handleJump(w http.ResponseWriter, r *http.Request){
 	// 记录 用于adjust
 	lastDistance = d
 	
-	// 初始化 step map array
+	//最小距离为屏幕的0.5%（x为屏幕的50%）
 	if distanceStep == 0 {
 		distanceStep = x/100;
+	}
+	
+	// 初始化 step map array
+	if ddMap == nil || len(ddMap) == 0 {
 		ddMap = make(map[int64]int64)	
-		ddMap[distanceStep] = minDelay
-		ddMap[x*2] = maxDelay
-		distanceArray = append(distanceArray, distanceStep)
-		distanceArray = append(distanceArray, x*2)
-		fmt.Println("distance:", distanceStep, "delay:", minDelay, "length:", len(distanceArray))
-		fmt.Println("distance:", x*2, "delay:", maxDelay, "length:", len(distanceArray))
+		ddMap[120] = minDelay
+		ddMap[1200] = maxDelay
+		distanceArray = append(distanceArray, 120)
+		distanceArray = append(distanceArray, 1200)
+		fmt.Println("distance:", 120, "delay:", minDelay, "length:", len(distanceArray))
+		fmt.Println("distance:", 1200, "delay:", maxDelay, "length:", len(distanceArray))
 	}
 	
 	// 取为step的整数倍
@@ -167,8 +175,89 @@ func queryNearTwo(v int64) (int64, int64, int64){
 	return 0, 0, 0
 }
 
+func readMapFile(){
+	f, e := os.OpenFile(mapFileName, os.O_RDONLY|os.O_CREATE, 0644)
+	if e != nil {
+		fmt.Println(e.Error())
+		return
+	}
+	defer f.Close()
+
+	b, e := ioutil.ReadAll(f)
+	if e != nil {
+		fmt.Println(e.Error())
+		return
+	}
+
+	if len(b) == 0{
+		return
+	}
+
+	if e := json.Unmarshal(b, &ddMap); e != nil {
+		fmt.Println(e.Error())
+		return
+	}
+	fmt.Println(ddMap)
+}
+
+func readArrayFile(){
+	f, e := os.OpenFile(arrayFileName, os.O_RDONLY|os.O_CREATE, 0644)
+	if e != nil {
+		fmt.Println(e.Error())
+		return
+	}
+	defer f.Close()
+
+	b, e := ioutil.ReadAll(f)
+	if e != nil {
+		fmt.Println(e.Error())
+		return
+	}
+
+	if len(b) == 0{
+		return
+	}
+
+	if e := json.Unmarshal(b, &distanceArray); e!=nil{
+		fmt.Println(e.Error())
+		return
+	}
+	fmt.Println(distanceArray)
+}
+
+func writeMapFile(){
+	if len(ddMap) == 0 {
+		return
+	}
+
+	b, e := json.Marshal(ddMap)
+	if e != nil {
+		fmt.Println(e.Error())
+		return
+	}
+
+	ioutil.WriteFile(mapFileName, b, 0644)
+}
+
+func writeArrayFile(){
+	if len(distanceArray) == 0 {
+		return
+	}
+
+	b, e := json.Marshal(distanceArray)
+	if e != nil {
+		fmt.Println(e.Error())
+		return
+	}
+
+	ioutil.WriteFile(arrayFileName, b, 0644)
+}
+
 func main() {
 	fmt.Println("hello")
+
+	readMapFile();
+	readArrayFile();
 
 	port := "80"
 	srv := &http.Server{ Addr: ":"+port }
@@ -187,6 +276,9 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     srv.Shutdown(ctx)
 	cancel()
+
+	writeMapFile();
+	readArrayFile();
 
 	fmt.Println("bye")
 }
